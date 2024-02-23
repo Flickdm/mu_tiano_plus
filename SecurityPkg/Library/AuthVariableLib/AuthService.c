@@ -31,6 +31,25 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #define SHA_DIGEST_SIZE_MAX  SHA512_DIGEST_SIZE
 
+//
+// OID will be at offset 13 if there is no ContentInfo, and at offset 32 if there is ContentInfo.
+//
+#define ASN1_OID_OFFSET(a, INCLUDES_CONTENT_INFO)  (13 + (INCLUDES_CONTENT_INFO ? 19 : 0) + a)
+STATIC_ASSERT (ASN1_OID_OFFSET (0, FALSE) == 13, "ASN1_OID_OFFSET calculation error");
+STATIC_ASSERT (ASN1_OID_OFFSET (0, TRUE) == 32, "ASN1_OID_OFFSET calculation error");
+
+//
+// Two byte encode will be at offset 1 if there is no ContentInfo, and at offset 20 if there is ContentInfo.
+//
+#define ASN1_TWO_BYTE_ENCODE_OFFSET(a, INCLUDES_CONTENT_INFO)  (1 + (INCLUDES_CONTENT_INFO ? 19 : 0) + a)
+STATIC_ASSERT (ASN1_TWO_BYTE_ENCODE_OFFSET (0, FALSE) == 1, "ASN1_TWO_BYTE_ENCODE_OFFSET calculation error");
+STATIC_ASSERT (ASN1_TWO_BYTE_ENCODE_OFFSET (0, TRUE) == 20, "ASN1_TWO_BYTE_ENCODE_OFFSET calculation error");
+
+//
+// This is the mask to check if the OID is two byte encoded.
+//
+#define ASN1_VERIFY_TWO_BYTE_ENCODE(a, INCLUDES_CONTENT_INFO)  ((*(ASN1_TWO_BYTE_ENCODE_OFFSET(a, INCLUDES_CONTENT_INFO)) & TWO_BYTE_ENCODE) == TWO_BYTE_ENCODE)
+
 /**
   Retrieves the size, in bytes, of the context buffer required for hash operations.
 
@@ -1951,30 +1970,57 @@ CleanCertsFromDb (
 
   @param[in]  SigData      Pointer to the PKCS#7 message.
   @param[in]  SigDataSize  Length of the PKCS#7 message.
+  @param[out] Index        Pointer to the hash algorithm index.
 
-  @retval UINT8        Hash Algorithm Index.
+  @retval EFI_INVALID_PARAMETER  the input parameter is invalid.
+  @retval EFI_SUCCESS            the hash algorithm index is found.
+  @retval EFI_SECURITY_VIOLATION the hash algorithm index is not found.
 **/
-UINT8
+EFI_STATUS
 FindHashAlgorithmIndex (
   IN     UINT8   *SigData,
-  IN     UINT32  SigDataSize
+  IN     UINT32  SigDataSize,
+  OUT    UINT8   *Index
   )
 {
   UINT8  i;
 
+  if ((SigData == NULL) || (SigDataSize == 0)) {
+    //
+    // This function expects valid input.
+    // This means that the caller must provide at least enough data to determine the hash algorithm.
+    //
+    return EFI_INVALID_PARAMETER;
+  }
+
   for (i = 0; i < (sizeof (mHashInfo) / sizeof (EFI_HASH_INFO)); i++) {
-    if (  (  (SigDataSize >= (13 + mHashInfo[i].OidLength))
-          && (  ((*(SigData + 1) & TWO_BYTE_ENCODE) == TWO_BYTE_ENCODE)
-             && (CompareMem (SigData + 13, mHashInfo[i].OidValue, mHashInfo[i].OidLength) == 0)))
-       || (  ((SigDataSize >= (32 +  mHashInfo[i].OidLength)))
-          && (  ((*(SigData + 20) & TWO_BYTE_ENCODE) == TWO_BYTE_ENCODE)
-             && (CompareMem (SigData + 32, mHashInfo[i].OidValue, mHashInfo[i].OidLength) == 0))))
-    {
-      break;
+    //
+    // Verify the length of the PKCS#7 message is at least enough to determine the hash algorithm.
+    //
+    if (SigDataSize >= (ASN1_OID_OFFSET (mHashInfo[i].OidLength, FALSE))) {
+      //
+      // The DER-encoded ContentInfo structure is not present.
+      //
+      if (ASN1_VERIFY_TWO_BYTE_ENCODE (SigData, FALSE) &&
+          (CompareMem (ASN1_OID_OFFSET (SigData, FALSE), mHashInfo[i].OidValue, mHashInfo[i].OidLength) == 0))
+      {
+        *Index = i;
+        return EFI_SUCCESS;
+      }
+    } else if (SigDataSize >= (ASN1_OID_OFFSET (mHashInfo[i].OidLength, TRUE))) {
+      //
+      // The DER-encoded ContentInfo structure is present.
+      //
+      if (ASN1_VERIFY_TWO_BYTE_ENCODE (SigData, TRUE) &&
+          (CompareMem (ASN1_OID_OFFSET (SigData, TRUE), mHashInfo[i].OidValue, mHashInfo[i].OidLength) == 0))
+      {
+        *Index = i;
+        return EFI_SUCCESS;
+      }
     }
   }
 
-  return i;
+  return EFI_SECURITY_VIOLATION;
 }
 
 /**
@@ -2160,14 +2206,14 @@ VerifyTimeBasedPayload (
   //
   // Example generated with: https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot#Manual_process
   //
-  HashAlgId = FindHashAlgorithmIndex (SigData, SigDataSize);
+  Status = FindHashAlgorithmIndex (SigData, SigDataSize, &HashAlgId);
   if ((Attributes & EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS) != 0) {
     //
     // A SigDataSize of zero, is a special case. This means that the variable is being deleted.
     // In this case, the payload is empty and the signature will not be verified.
     //
-    if ((SigDataSize != 0) && (HashAlgId >= (sizeof (mHashInfo) / sizeof (EFI_HASH_INFO)))) {
-      return EFI_SECURITY_VIOLATION;
+    if (EFI_ERROR (Status) && (SigDataSize != 0)) {
+      return Status;
     }
   }
 
