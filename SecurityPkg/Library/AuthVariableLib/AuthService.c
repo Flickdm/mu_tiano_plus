@@ -2162,7 +2162,11 @@ VerifyTimeBasedPayload (
   //
   HashAlgId = FindHashAlgorithmIndex (SigData, SigDataSize);
   if ((Attributes & EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS) != 0) {
-    if (HashAlgId >= (sizeof (mHashInfo) / sizeof (EFI_HASH_INFO))) {
+    //
+    // A SigDataSize of zero, is a special case. This means that the variable is being deleted.
+    // In this case, the payload is empty and the signature will not be verified.
+    //
+    if ((SigDataSize != 0) && (HashAlgId >= (sizeof (mHashInfo) / sizeof (EFI_HASH_INFO)))) {
       return EFI_SECURITY_VIOLATION;
     }
   }
@@ -2177,6 +2181,14 @@ VerifyTimeBasedPayload (
   if ((PayloadSize == 0) && ((Attributes & EFI_VARIABLE_APPEND_WRITE) == 0) && !IsVariablePolicyEnabled ()) {
     VerifyStatus = TRUE;
     goto Exit;
+  }
+
+  //
+  // The SigDataSize should never be zero past this point.
+  // If it is zero, then the signature cannot be verified.
+  //
+  if (SigDataSize == 0) {
+    return EFI_SECURITY_VIOLATION;
   }
 
   //
