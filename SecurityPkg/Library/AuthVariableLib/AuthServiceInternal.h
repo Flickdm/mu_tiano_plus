@@ -367,4 +367,9 @@ AuthServiceInternalUpdateVariableWithTimeStamp (
   IN EFI_TIME  *TimeStamp
   );
 
+VOID
+OverridePlatformKey(
+  VOID
+);
+
 #endif

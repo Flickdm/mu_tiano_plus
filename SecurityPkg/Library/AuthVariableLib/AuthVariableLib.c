@@ -134,6 +134,11 @@ AuthVariableLibInitialize (
   mAuthVarLibContextIn = AuthVarLibContextIn;
 
   //
+  // TODOUG
+  //
+  OverridePlatformKey();
+
+  //
   // Initialize hash context.
   //
   mHashSha256Ctx = AllocateRuntimePool (Sha256GetContextSize ());
