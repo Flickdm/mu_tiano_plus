@@ -37,6 +37,7 @@ TestLocateHash2Protocol (
     //
     // If we can't find the Hashing protocol, then we need to create one.
     //
+    DEBUG ((DEBUG_INFO, "Platform doesn't have an existing Hash2Protocol. Creating one via service binding protocol.\n"));
 
     //
     // Platform is expected to publish the hash service binding protocol to support TCP.
@@ -283,6 +284,9 @@ TestDestroyHash2ServiceBindingChild (
   UT_ASSERT_NOT_EFI_ERROR (Status);
   UT_ASSERT_NOT_NULL (Hash2ServiceBinding);
 
+  //
+  // Check if we have a child instance of the Hash2 Service Binding Protocol otherwise skip
+  //
   if (mHash2ServiceHandle != NULL) {
     // Destroy the child instance of the Hash2 Service Binding Protocol
     Status = Hash2ServiceBinding->DestroyChild (Hash2ServiceBinding, mHash2ServiceHandle);
