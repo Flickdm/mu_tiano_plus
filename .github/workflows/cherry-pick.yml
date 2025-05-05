@@ -52,6 +52,7 @@ jobs:
             if [[ ! $(echo "$commit_message" | tr '[:upper:]' '[:lower:]') =~ \[cherry-pick\/.+\] ]] || [[ ! "$commit_message" =~ \(cherry\ picked\ from\ commit\ [0-9a-f]{40}\) ]]; then
               echo "Commit $commit does not meet the required pattern."
               echo "Commit message: $commit_message"
+              echo "Please use 'git cherry-pick -x <commit_hash>' to cherry-pick the commit."
               exit 1
             else
               echo "Commit $commit meets the required pattern."
