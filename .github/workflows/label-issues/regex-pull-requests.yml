@@ -33,6 +33,10 @@ labels:
     branch : "dependabot/*"
     base-branch: "dev/20[0-9]{4}"
 
+  - label: type:cherry-pick
+    type: "pull_request"
+    body: '\s*\[\s*(x|X){1}\s*\]\s*Cherry\s*pick\?'
+
   - label: impact:breaking-change
     type: "pull_request"
     body: '\s*\[\s*(x|X){1}\s*\]\s*Breaking\s*change\?'

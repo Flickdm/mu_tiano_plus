@@ -10,6 +10,7 @@ For details on how to complete these options and their meaning refer to [CONTRIB
 - [ ] Includes tests?
 - [ ] Includes documentation?
 - [ ] Backport to release branch?
+- [ ] Cherry pick?
 
 ## How This Was Tested
 
