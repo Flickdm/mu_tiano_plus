@@ -60,4 +60,3 @@ jobs:
         done
 
         echo "All commit messages meet the required pattern.";
-s
