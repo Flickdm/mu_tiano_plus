@@ -14,3 +14,6 @@ impact:security:
 
 impact:testing:
   - '\s*-\s*\[\s*[x|X]\s*\] Includes tests\?'
+
+impact:cherry-pick:
+  - '\s*\[\s*(x|X){1}\s*\]\s*Cherry\s*pick\?'
